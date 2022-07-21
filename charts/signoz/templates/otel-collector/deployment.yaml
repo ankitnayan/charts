@@ -14,6 +14,8 @@ spec:
   template:
     metadata:
       annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8889"
         checksum/config: {{ include (print $.Template.BasePath "/otel-collector/config.yaml") . | sha256sum }}
       labels:
         {{- include "otelCollector.selectorLabels" . | nindent 8 }}
