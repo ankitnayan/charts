@@ -26,6 +26,9 @@ spec:
       securityContext:
         {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
       volumes:
+        - name: signoz-io-ssl
+          secret:
+            secretName: signoz-io-ssl
         - name: nginx-config
           configMap:
             name: {{ include "frontend.fullname" . }}
@@ -51,6 +54,9 @@ spec:
             - name: http
               containerPort:  {{ .Values.frontend.service.port }}
               protocol: TCP
+            - name: http-default
+              containerPort:  {{ .Values.frontend.service.httpPort  }}
+              protocol: TCP
           {{- with .Values.frontend.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -61,14 +67,19 @@ spec:
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
+            - name: signoz-io-ssl
+              mountPath: "/etc/letsencrypt/live/signoz.io"
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /
               port: http
+              scheme: HTTPS
           readinessProbe:
             httpGet:
               path: /
               port: http
+              scheme: HTTPS
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
       {{- with .Values.frontend.nodeSelector }}

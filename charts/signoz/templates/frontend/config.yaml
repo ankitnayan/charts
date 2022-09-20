@@ -7,7 +7,16 @@ metadata:
 data:
   default.conf: |-
     server {
-      listen       {{ .Values.frontend.service.port }};
+
+        listen {{ .Values.frontend.service.httpPort }} default_server;
+        server_name _;
+
+        return 301 https://$host$request_uri;
+
+    }
+    server {
+      
+      listen       {{ .Values.frontend.service.port }} ssl;
       server_name  _;
     {{- with .Values.frontend.nginxExtraConfig }}
       {{ . | trim | nindent 6 }}
@@ -20,6 +29,10 @@ data:
       gzip_comp_level 6;
       gzip_buffers 16 8k;
       gzip_http_version 1.1;
+
+
+      ssl_certificate /etc/letsencrypt/live/signoz.io/fullchain.pem; # managed by Certbot
+      ssl_certificate_key /etc/letsencrypt/live/signoz.io/privkey.pem; # managed by Certbot
 
       location / {
           if ( $uri = '/index.html' ) {

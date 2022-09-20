@@ -533,9 +533,10 @@ frontend:
     # -- Annotations to use by service associated to Frontend
     annotations: {}
     # -- Service Type: LoadBalancer (allows external access) or NodePort (more secure, no extra cost)
-    type: ClusterIP
+    type: LoadBalancer
     # -- Frontend HTTP port
-    port: 3301
+    port: 443
+    httpPort: 80
 
   ingress:
     # -- Enable ingress for Frontend

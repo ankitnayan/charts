@@ -17,6 +17,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .httpPort }}
+      targetPort: http-default 
+      protocol: TCP
+      name: http-default 
 {{- end }}
   selector:
     {{- include "frontend.selectorLabels" . | nindent 4 }}
