@@ -1581,7 +1581,7 @@ otelCollectorMetrics:
 # @ignored
 k8s-infra:
   # -- Whether to enable K8s infra monitoring
-  enabled: true
+  enabled: false
 
   # -- Endpoint/IP Address of the SigNoz.
   otelCollectorEndpoint: my-release-signoz-otel-collector.platform.svc.cluster.local:4317
