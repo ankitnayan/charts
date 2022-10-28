@@ -17,7 +17,10 @@ enabled: true
 
 # -- Endpoint/IP Address of the SigNoz or any other OpenTelemetry backend.
 # Set it to `ingest.signoz.io:4317` for SigNoz SaaS.
-otelCollectorEndpoint: my-release-signoz-otel-collector.platform.svc.cluster.local:4317
+#
+# If set to null and the chart is installed as dependency, it will attempt
+# to autogenerate the endpoint of SigNoz OtelCollector.
+otelCollectorEndpoint: null
 
 # -- Whether the OTLP endpoint is insecure.
 # Set this to false, in case of secure OTLP endpoint.
@@ -25,6 +28,13 @@ otelInsecure: true
 
 # -- API key of SigNoz SaaS
 signozApiKey: ""
+
+# -- Kubernetes cluster domain used when k8s-infra component installed in different namespace
+clusterDomain: cluster.local
+
+# -- Which namespace to install k8s-infra components.
+# By default installed to the namespace same as the chart.
+namespace: ""
 
 # Default values for OtelAgent
 otelAgent:
@@ -209,10 +219,10 @@ otelAgent:
   # -- Configure liveness probe.
   # ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-liveness-command
   livenessProbe:
-    enabled: false
+    enabled: true
     port: 13133
     path: /
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 6
@@ -221,10 +231,10 @@ otelAgent:
   # -- Configure readiness probe.
   # ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes
   readinessProbe:
-    enabled: false
+    enabled: true
     port: 13133
     path: /
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 6
@@ -399,15 +409,14 @@ otelAgent:
                 - ${MY_POD_IP}:8888
     processors:
       batch:
-        send_batch_size: 10000
-        timeout: 10s
+        send_batch_size: 5000
+        timeout: 5s
       # Resource detection processor config.
       # ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/README.md
       resourcedetection:
         detectors: [env, system]  # Include ec2/eks for AWS, gce/gke for GCP and azure/aks for Azure
         # Using OTEL_RESOURCE_ATTRIBUTES envvar, env detector adds custom labels
         timeout: 2s
-        override: false
         system:
           hostname_sources: [os]  # Alternatively, use [dns,os] for setting FQDN as host.name and os as fallback
       # Memory Limiter processor config.
@@ -564,10 +573,10 @@ otelDeployment:
   # -- Configure liveness probe.
   # ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-liveness-command
   livenessProbe:
-    enabled: false
+    enabled: true
     port: 13133
     path: /
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 6
@@ -576,10 +585,10 @@ otelDeployment:
   # -- Configure readiness probe.
   # ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes
   readinessProbe:
-    enabled: false
+    enabled: true
     port: 13133
     path: /
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 6
@@ -705,8 +714,8 @@ otelDeployment:
                   - ${MY_POD_IP}:8888
     processors:
       batch:
-        send_batch_size: 10000
-        timeout: 10s
+        send_batch_size: 5000
+        timeout: 5s
       # Memory Limiter processor.
       # If set to null, will be overridden with values based on k8s resource limits.
       memory_limiter: null
