@@ -154,7 +154,7 @@ clickhouse:
       - ReadWriteOnce
 
     # -- Persistent Volume size
-    size: 20Gi
+    size: 1000Gi
 
   # -- Clickhouse user profile configuration.
   # You can use this to override profile settings, for example `default/max_memory_usage: 40000000000`
@@ -880,7 +880,7 @@ otelCollector:
 
   minReadySeconds: 5
   progressDeadlineSeconds: 120
-  replicaCount: 1
+  replicaCount: 2
 
   initContainers:
     init:
@@ -1076,13 +1076,13 @@ otelCollector:
   # -- Configure resource requests and limits. Update according to your own use
   # case as these values might be too low for a typical deployment.
   # ref: http://kubernetes.io/docs/user-guide/compute-resources/
-  resources:
-    requests:
-      cpu: 100m
-      memory: 100Mi
-    # limits:
-    #   cpu: 1000m
-    #   memory: 2Gi
+  # resources:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 100Mi
+  #   # limits:
+  #   #   cpu: 1000m
+  #   #   memory: 2Gi
 
   nodeSelector: {}
 
@@ -1182,8 +1182,8 @@ otelCollector:
                 - ${MY_POD_IP}:8888
     processors:
       batch:
-        send_batch_size: 1000
-        timeout: 10s
+        send_batch_size: 50000
+        timeout: 2s
       # Ref: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/README.md
       resourcedetection:
         detectors: [env, system]  # Include ec2/eks for AWS, gce/gke for GCP and azure/aks for Azure
