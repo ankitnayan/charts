@@ -54,6 +54,17 @@ app.kubernetes.io/component: {{ default "clickhouse" .Values.name }}
 {{- end -}}
 
 {{/*
+Create the name of the service account to use
+*/}}
+{{- define "clickhouse.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+    {{ default (include "clickhouse.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+    {{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Set zookeeper host
 */}}
 {{- define "clickhouse.zookeeper.servicename" -}}
@@ -70,14 +81,42 @@ Set zookeeper host
 Set zookeeper port
 */}}
 {{- define "clickhouse.zookeeper.port" -}}
-{{- 2181 -}}
+{{- default 2181 }}
+{{- end }}
+
+{{/*
+Return suffix part of the headless service
+*/}}
+{{- define "clickhouse.zookeeper.headlessSvcSuffix" -}}
+{{- $namespace := .Values.zookeeper.namespaceOverride }}
+{{- $clusterDomain := default "cluster.local" .Values.global.clusterDomain }}
+{{- $name := printf "%s-headless" (include "clickhouse.zookeeper.servicename" .) }}
+{{- if and $namespace (ne $namespace .Values.namespace) }}
+{{- printf "%s.svc.%s.%s" $name $namespace $clusterDomain }}
+{{- else -}}
+{{- $name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the initContainers image name
+*/}}
+{{- define "clickhouse.initContainers.init.image" -}}
+{{- $registryName := default .Values.initContainers.init.image.registry .Values.global.imageRegistry -}}
+{{- $repositoryName := .Values.initContainers.init.image.repository -}}
+{{- $tag := .Values.initContainers.init.image.tag | toString -}}
+{{- if $registryName -}}
+    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+{{- else -}}
+    {{- printf "%s:%s" $repositoryName $tag -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Return the proper clickhouse image name
 */}}
 {{- define "clickhouse.image" -}}
-{{- $registryName := default .Values.image.registry .Values.global.image.registry -}}
+{{- $registryName := default .Values.image.registry .Values.global.imageRegistry -}}
 {{- $repositoryName := .Values.image.repository -}}
 {{- $tag := .Values.image.tag | toString -}}
 {{- if $registryName -}}
@@ -97,6 +136,36 @@ nodePort: null
 {{- end -}}
 
 {{/*
+Return the proper Image Registry Secret Names.
+*/}}
+{{- define "clickhouse.imagePullSecrets" -}}
+{{- if or .Values.global.imagePullSecrets .Values.imagePullSecrets }}
+imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return service account annotations of ClickHouse instance.
+*/}}
+{{- define "clickhouse.serviceAccountAnnotations" -}}
+{{- $annotations := dict }}
+{{- if .Values.serviceAccount.create }}
+{{- $annotations = merge $annotations .Values.serviceAccount.annotations }}
+{{- end }}
+{{- if and .Values.coldStorage.enabled .Values.coldStorage.role.enabled }}
+{{- $annotations = merge $annotations .Values.coldStorage.role.annotations }}
+{{- end -}}
+annotations:
+  {{- toYaml $annotations | nindent 2 }}
+{{- end }}
+
+{{/*
 Create a default fully qualified app name for clickhouseOperator.
 */}}
 {{- define "clickhouseOperator.fullname" -}}
@@ -109,6 +178,15 @@ Return namespace of clickhouse
 {{- define "clickhouse.namespace" -}}
 {{- default .Release.Namespace .Values.namespace -}}
 {{- end -}}
+
+{{/*
+Return list of files and contents.
+*/}}
+{{- define "clickhouse.files" -}}
+{{- range $key,$value := .Values.files }}
+{{ $key }}: {{ $value | toYaml }}
+{{- end }}
+{{- end }}
 
 {{/*
 Common labels
@@ -136,7 +214,7 @@ app.kubernetes.io/component: {{ .Values.clickhouseOperator.name }}
 Return the proper clickhouseOperator image name
 */}}
 {{- define "clickhouseOperator.image" -}}
-{{- $registryName := default .Values.clickhouseOperator.image.registry .Values.global.image.registry -}}
+{{- $registryName := default .Values.clickhouseOperator.image.registry .Values.global.imageRegistry -}}
 {{- $repositoryName := .Values.clickhouseOperator.image.repository -}}
 {{- $tag := default .Values.clickhouseOperator.version .Values.clickhouseOperator.image.tag | toString -}}
 {{- if $registryName -}}
@@ -145,7 +223,6 @@ Return the proper clickhouseOperator image name
     {{- printf "%s:%s" $repositoryName $tag -}}
 {{- end -}}
 {{- end -}}
-
 
 {{/*
 Create the name of the service account to use
@@ -159,6 +236,21 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
+Return the proper Image Registry Secret Names.
+*/}}
+{{- define "clickhouseOperator.imagePullSecrets" -}}
+{{- if or .Values.global.imagePullSecrets .Values.clickhouseOperator.imagePullSecrets }}
+imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.clickhouseOperator.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Create a default fully qualified app name for metricsExporter.
 */}}
 {{- define "metricsExporter.fullname" -}}
@@ -169,7 +261,7 @@ Create a default fully qualified app name for metricsExporter.
 Return the proper metricsExporter image name
 */}}
 {{- define "metricsExporter.image" -}}
-{{- $registryName := default .Values.clickhouseOperator.metricsExporter.image.registry .Values.global.image.registry -}}
+{{- $registryName := default .Values.clickhouseOperator.metricsExporter.image.registry .Values.global.imageRegistry -}}
 {{- $repositoryName := .Values.clickhouseOperator.metricsExporter.image.repository -}}
 {{- $tag := default .Values.clickhouseOperator.version .Values.clickhouseOperator.metricsExporter.image.tag | toString -}}
 {{- if $registryName -}}

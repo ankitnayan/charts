@@ -94,7 +94,7 @@ Create the name of the service account to use for agent.
 Return the proper image name of agent.
 */}}
 {{- define "otelAgent.image" -}}
-{{- $registryName := default .Values.otelAgent.image.registry .Values.global.image.registry -}}
+{{- $registryName := default .Values.otelAgent.image.registry .Values.global.imageRegistry -}}
 {{- $repositoryName := .Values.otelAgent.image.repository -}}
 {{- $tag := default .Chart.AppVersion .Values.otelAgent.image.tag | toString -}}
 {{- if $registryName -}}
@@ -125,6 +125,21 @@ Create the name of the clusterRoleBinding to use for agent.
 {{- default $clusterRole .Values.otelAgent.clusterRole.clusterRoleBinding.name }}
 {{- else }}
 {{- default "default" .Values.otelAgent.clusterRole.clusterRoleBinding.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the proper Image Registry Secret Names for agent.
+*/}}
+{{- define "otelAgent.imagePullSecrets" -}}
+{{- if or .Values.global.imagePullSecrets .Values.otelAgent.imagePullSecrets }}
+imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.otelAgent.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -174,7 +189,7 @@ Create the name of the service account to use for deployment.
 Return the proper image name of deployment.
 */}}
 {{- define "otelDeployment.image" -}}
-{{- $registryName := default .Values.otelDeployment.image.registry .Values.global.image.registry }}
+{{- $registryName := default .Values.otelDeployment.image.registry .Values.global.imageRegistry }}
 {{- $repositoryName := .Values.otelDeployment.image.repository }}
 {{- $tag := default .Chart.AppVersion .Values.otelDeployment.image.tag | toString }}
 {{- if $registryName }}
@@ -209,6 +224,21 @@ Create the name of the clusterRoleBinding to use for deployment.
 {{- end }}
 
 {{/*
+Return the proper Image Registry Secret Names for deployment.
+*/}}
+{{- define "otelDeployment.imagePullSecrets" -}}
+{{- if or .Values.global.imagePullSecrets .Values.otelDeployment.imagePullSecrets }}
+imagePullSecrets:
+{{- range .Values.global.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- range .Values.otelDeployment.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Create a fully qualified app name for signoz.
 Assuming defaults for fullnameOverride and nameOverride.
 */}}
@@ -234,7 +264,8 @@ Assuming defaults for overrides and otel component name.
 */}}
 {{- define "otel.servicename" -}}
 {{- if and .Values.namespace (ne .Values.namespace .Release.Namespace) }}
-{{- printf "%s.%s.svc.%s" (include "otel.qualifiedname" .) .Release.Namespace .Values.clusterDomain }}
+{{- $clusterDomain := default "cluster.local" .Values.global.clusterDomain }}
+{{- printf "%s.%s.svc.%s" (include "otel.qualifiedname" .) .Release.Namespace $clusterDomain }}
 {{- else }}
 {{- include "otel.qualifiedname" . }}
 {{- end }}
@@ -337,3 +368,50 @@ Return if ingress is stable.
 {{- include "k8s-infra.fullname" . }}-secrets
 {{- end }}
 {{- end -}}
+
+{{/*
+Common K8s environment variables used by OtelAgent and OtelDeployment.
+*/}}
+{{- define "snippet.k8s-env" }}
+- name: K8S_NODE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+- name: K8S_POD_IP
+  valueFrom:
+    fieldRef:
+      apiVersion: v1
+      fieldPath: status.podIP
+- name: K8S_HOST_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.hostIP
+- name: K8S_POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: K8S_POD_UID
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
+- name: K8S_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+{{- end }}
+
+{{/*
+OTLP exporter environment variables used by OtelAgent and OtelDeployment.
+*/}}
+{{- define "snippet.otlp-env" }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ include "otel.endpoint" . }}
+- name: OTEL_EXPORTER_OTLP_INSECURE
+  value: {{ include "otel.insecure" . }}
+- name: SIGNOZ_API_KEY
+  value: {{ include "otel.signozApiKey" . }}
+- name: OTEL_EXPORTER_OTLP_INSECURE_SKIP_VERIFY
+  value: {{ include "otel.insecureSkipVerify" . }}
+- name: OTEL_SECRETS_PATH
+  value: {{ include "otel.secretsPath" . }}
+{{- end }}

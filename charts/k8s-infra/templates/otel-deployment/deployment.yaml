@@ -26,9 +26,37 @@ spec:
       labels:
         {{- include "otelDeployment.selectorLabels" . | nindent 8 }}
     spec:
+      {{- include "otelDeployment.imagePullSecrets" . | indent 6 }}
       serviceAccountName: {{ include "otelDeployment.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.otelDeployment.podSecurityContext | nindent 8 }}
+      priorityClassName: {{ .Values.otelDeployment.priorityClassName | quote }}
+      {{- with .Values.otelDeployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otelDeployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otelDeployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: otel-deployment-config-vol
+          configMap:
+            name: {{ include "otelDeployment.fullname" . }}
+        {{- if .Values.otelTlsSecrets.enabled }}
+        - name: {{ include "k8s-infra.fullname" . }}-deployment-secrets-vol
+          secret:
+            secretName: {{ include "k8s-infra.secretName" . }}
+            items:
+              - key: cert.pem
+                path: cert.pem
+              - key: key.pem
+                path: key.pem
+        {{- end }}
       containers:
         - name: {{ template "otelDeployment.fullname" . }}
           image: {{ template "otelDeployment.image" . }}
@@ -55,26 +83,19 @@ spec:
           securityContext:
             {{- toYaml .Values.otelDeployment.securityContext | nindent 12 }}
           env:
-            - name: MY_POD_IP
-              valueFrom:
-                fieldRef:
-                  apiVersion: v1
-                  fieldPath: status.podIP
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: {{ include "otel.endpoint" . }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: {{ include "otel.insecure" . }}
-            - name: SIGNOZ_API_KEY
-              value: {{ include "otel.signozApiKey" . }}
-            - name: OTEL_EXPORTER_OTLP_INSECURE_SKIP_VERIFY
-              value: {{ include "otel.insecureSkipVerify" . }}
-            - name: OTEL_SECRETS_PATH
-              value: {{ include "otel.secretsPath" . }}
+            {{- include "snippet.otlp-env" . | nindent 12 }}
+            {{- include "snippet.k8s-env" . | nindent 12 }}
+            - name: K8S_CLUSTER_NAME
+              value: {{ default .Values.global.clusterName .Values.clusterName }}
+            - name: SIGNOZ_COMPONENT
+              value: {{ default "otel-deployment" .Values.otelDeployment.name }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: host.name=$(K8S_NODE_NAME),signoz.component=$(SIGNOZ_COMPONENT),k8s.cluster.name=$(K8S_CLUSTER_NAME),k8s.pod.uid=$(K8S_POD_UID),k8s.pod.ip=$(K8S_POD_IP)
           volumeMounts:
             - name: otel-deployment-config-vol
               mountPath: /conf
             {{- if .Values.otelTlsSecrets.enabled }}
-            - name: {{ include "k8s-infra.fullname" . }}-secrets-vol
+            - name: {{ include "k8s-infra.fullname" . }}-deployment-secrets-vol
               mountPath: {{ default "/secrets" .Values.otelTlsSecrets.path }}
             {{- end }}
           {{- if .Values.otelDeployment.livenessProbe.enabled }}
@@ -111,29 +132,3 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.otelDeployment.resources | nindent 12 }}
-      {{- with .Values.otelDeployment.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.otelDeployment.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.otelDeployment.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      volumes:
-        - name: otel-deployment-config-vol
-          configMap:
-            name: {{ include "otelDeployment.fullname" . }}
-        {{- if .Values.otelTlsSecrets.enabled }}
-        - name: {{ include "k8s-infra.fullname" . }}-secrets-vol
-          secret:
-            secretName: {{ include "k8s-infra.secretName" . }}
-            items:
-              - key: cert.pem
-                path: cert.pem
-              - key: key.pem
-                path: key.pem
-        {{- end }}
