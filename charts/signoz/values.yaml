@@ -205,7 +205,7 @@ clickhouse:
       - ReadWriteOnce
 
     # -- Persistent Volume size
-    size: 1000Gi
+    size: 100Gi
 
   # -- Clickhouse user profile configuration.
   # You can use this to override profile settings, for example
@@ -1085,7 +1085,7 @@ otelCollector:
 
   minReadySeconds: 5
   progressDeadlineSeconds: 120
-  replicaCount: 2
+  replicaCount: 1
 
   initContainers:
     init:
