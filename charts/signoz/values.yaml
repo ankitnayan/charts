@@ -272,9 +272,12 @@ clickhouse:
     # -- Whether to enable S3 cold storage
     enabled: false
     # -- Reserve free space on default disk (in bytes)
+    # Default value is 10MiB
     defaultKeepFreeSpaceBytes: "10485760"
-    # -- AWS S3 endpoint
-    endpoint: https://<bucket-name>.s3.amazonaws.com/data/
+    # -- AWS S3 endpoint.
+    # If region is us-east-1, endpoint can be https://s3.amazonaws.com
+    # If region is not us-east-1, endpoint should be https://s3-<region>.amazonaws.com
+    endpoint: https://<bucket-name>.s3-<region>.amazonaws.com/data/
     # AWS role configuration - to use environment variables instead of passing access and secret keys
     role:
       # -- Whether to enable AWS IAM ARN role.
@@ -1466,11 +1469,14 @@ otelCollector:
           # -- Restrict each OpenTelemetry agent to query pods running on the same node
           node_from_env_var: K8S_NODE_NAME
         pod_association:
-          - from: resource_attribute
-            name: k8s.pod.ip
-          - from: resource_attribute
-            name: k8s.pod.uid
-          - from: connection
+          - sources:
+            - from: resource_attribute
+              name: k8s.pod.ip
+          - sources:
+            - from: resource_attribute
+              name: k8s.pod.uid
+          - sources:
+            - from: connection
         extract:
           metadata:
             - k8s.namespace.name
@@ -1942,11 +1948,14 @@ otelCollectorMetrics:
           # -- Restrict each OpenTelemetry agent to query pods running on the same node
           node_from_env_var: K8S_NODE_NAME
         pod_association:
-          - from: resource_attribute
-            name: k8s.pod.ip
-          - from: resource_attribute
-            name: k8s.pod.uid
-          - from: connection
+          - sources:
+            - from: resource_attribute
+              name: k8s.pod.ip
+          - sources:
+            - from: resource_attribute
+              name: k8s.pod.uid
+          - sources:
+            - from: connection
         extract:
           metadata:
             - k8s.namespace.name
@@ -2139,11 +2148,14 @@ k8s-infra:
       # -- Pod Association section allows to define rules for tagging spans, metrics,
       # and logs with Pod metadata.
       podAssociation:
-        - from: resource_attribute
-          name: k8s.pod.ip
-        - from: resource_attribute
-          name: k8s.pod.uid
-        - from: connection
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.ip
+        - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+        - sources:
+          - from: connection
       # -- Which pod/namespace metadata to extract from a list of default metadata fields.
       extractMetadatas:
         - k8s.namespace.name
